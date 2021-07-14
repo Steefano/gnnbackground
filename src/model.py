@@ -38,10 +38,12 @@ class Net(torch.nn.Module):
 
         return torch.sigmoid(x)
 
-def train(X, y, net, train_idx, val_idx, optimizer, epochs = 100, early_stopping = 20, verbose = True):
+def train(X, y, net, train_idx, val_idx, optimizer, scheduler, epochs = 100, early_stopping = 20, verbose = 1):
     criterion = nn.BCELoss()
 
-    max_acc = 0
+    to_return = {"TL" : [], "VL" : []}
+
+    min_loss = 100
     epochs_without_increase = 0
     state = None
 
@@ -53,29 +55,33 @@ def train(X, y, net, train_idx, val_idx, optimizer, epochs = 100, early_stopping
         loss = criterion(output.flatten()[train_idx], y[train_idx])
         loss.backward()
         optimizer.step()
+        to_return["TL"].append(loss.item())
 
-        if verbose:
+        if verbose and epoch % verbose == 0:
             print("Epoch " + str(epoch) + " finished. Train loss equal to " + str(loss.item()) + ".")
 
         net.eval()
         with torch.no_grad():
             output = net(X)
+            val_loss = criterion(output.flatten()[val_idx], y[val_idx])
         max_index = torch.where(output.flatten() > 0.5, 1, 0)
         acc = (max_index == y)[val_idx].sum().item() / len(val_idx)
+        to_return["VL"].append(val_loss.item())
 
-        if verbose:
-            print("Validation accuracy equal to " + str(acc) + ".")
+        if verbose and epoch % verbose == 0:
+            print("Validation loss equal to " + str(val_loss) + ".")
+            print("Validation accuracy equal to " + str(acc) + ".\n")
+
+        scheduler.step(val_loss)
         
-        if acc > max_acc:
-            max_acc = acc
-            epochs_without_increase = 0
+        if val_loss.item() < min_loss:
+            min_loss = val_loss.item()
             state = net.state_dict()
         else:
-            epochs_without_increase += 1
-            if epochs_without_increase == early_stopping:
+            if scheduler.num_bad_epochs > early_stopping:
                 break
     
     net.load_state_dict(state)
     net.eval()
 
-    return acc
+    return to_return
