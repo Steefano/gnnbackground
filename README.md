@@ -21,5 +21,5 @@ Of course, we can also achieve these properties with more complex CV models. But
 Here we show the image we started with, the pixels we manually labeled for the training process, and the final result.
 
 ![Starting Image](images/200photo24.bmp)
-![Labeled Pixels](images/200photo24.bmp)
+![Labeled Pixels](images/200photo24-pointed.bmp)
 ![Final Photo](finalphoto.jpg)
